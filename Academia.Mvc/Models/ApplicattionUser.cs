@@ -4,5 +4,5 @@ namespace Academia;
 
 public class ApplicattionUser : IdentityUser
 {
-    public string NomeCompleto {get; set;} = string.Empty
+    public string NomeCompleto {get; set;} = string.Empty;
 }

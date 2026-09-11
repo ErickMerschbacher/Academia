@@ -7,5 +7,5 @@ public class Aula
     public DayOfWeek DiaDaSemana {get; set;} //Dia da semana de aula
     public TimeSpan Horario {get; set;}
     public int VagasTotais {get; set;}
-    public int ProfissionaisId
+    public int ProfissionaisId {get; set;}
 }

@@ -1,8 +1,32 @@
+using Academia;
+using Academia.Mvc.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Academia.Mvc.Models;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Identity com suporte a Roles
+builder.Services.AddIdentity<ApplicattionUser, IdentityRole>(options =>
+    {
+        options.Password.RequireNonAlphanumeric = false; // mais simples pra fins didáticos
+        options.Password.RequiredLength = 6;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// HttpClient para consumir a Academia.Api (Produtos)
+builder.Services.AddHttpClient("AcademiaApi", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7050/"); // ajuste para a porta real da sua API
+});
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -16,6 +40,9 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+app.UseAuthentication();   // precisa vir ANTES do UseAuthorization
+
+
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -25,5 +52,33 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+// ---- Seed de Roles e usuário Admin padrão ----
+        using (var scope = app.Services.CreateScope())
+        {
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicattionUser>>();
 
-app.Run();
+            string[] roles = { "Admin", "Colaborador", "Cliente" };
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                    await roleManager.CreateAsync(new IdentityRole(role));
+            }
+
+            string emailAdmin = "admin@powerfit.com";
+            if (await userManager.FindByEmailAsync(emailAdmin) is null)
+            {
+                var admin = new ApplicattionUser
+                {
+                    UserName = emailAdmin,
+                    Email = emailAdmin,
+                    NomeCompleto = "Administrador"
+                };
+                await userManager.CreateAsync(admin, "Admin@123");
+                await userManager.AddToRoleAsync(admin, "Admin");
+            }
+        }
+
+        app.Run();
+    
+
